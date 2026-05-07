@@ -9,20 +9,19 @@ import { MOCK_PRODUCTS, isSupabaseConfigured } from "@/lib/mock-data";
 export const revalidate = 60;
 
 export default async function HomePage() {
-  let products: Product[] = MOCK_PRODUCTS;
+  let products: Product[];
   if (isSupabaseConfigured()) {
-    try {
-      const supabase = createClient();
-      const { data } = await supabase
-        .from("products")
-        .select("*, suppliers(id,name), categories(id,name,slug)")
-        .eq("is_active", true)
-        .order("created_at", { ascending: false })
-        .limit(8);
-      if (data?.length) products = data as Product[];
-    } catch {
-      /* keep mock */
-    }
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("products")
+      .select("*, suppliers(id,name), categories(id,name,slug), product_options(*)")
+      .eq("is_draft", false)
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .limit(8);
+    products = (data ?? []) as Product[];
+  } else {
+    products = MOCK_PRODUCTS;
   }
 
   return (
@@ -76,10 +75,15 @@ export default async function HomePage() {
           </div>
 
           <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {(products ?? []).map((p) => (
-              <ProductCard key={p.id} product={p as Product} />
+            {products.map((p) => (
+              <ProductCard key={p.id} product={p} />
             ))}
           </div>
+          {products.length === 0 && (
+            <p className="mt-8 rounded-md border border-dashed bg-white p-12 text-center text-sm text-muted-foreground">
+              아직 등록된 상품이 없습니다. 곧 신선한 상품이 등록될 예정입니다.
+            </p>
+          )}
         </div>
       </section>
     </div>

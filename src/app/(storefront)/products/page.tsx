@@ -16,34 +16,32 @@ export default async function ProductsPage({
 }: {
   searchParams: { category?: string };
 }) {
-  let categories: Category[] = MOCK_CATEGORIES;
-  let products: Product[] = MOCK_PRODUCTS;
+  let categories: Category[];
+  let products: Product[];
 
   if (isSupabaseConfigured()) {
-    try {
-      const supabase = createClient();
-      const { data: cats } = await supabase
-        .from("categories")
-        .select("*")
-        .order("sort");
-      if (cats?.length) categories = cats as Category[];
+    const supabase = createClient();
+    const { data: cats } = await supabase
+      .from("categories")
+      .select("*")
+      .order("sort");
+    categories = (cats ?? MOCK_CATEGORIES) as Category[];
 
-      const cat = categories.find((c) => c.slug === searchParams.category);
-      let query = supabase
-        .from("products")
-        .select("*, suppliers(id,name), categories(id,name,slug)")
-        .eq("is_active", true)
-        .order("created_at", { ascending: false });
-      if (cat) query = query.eq("category_id", cat.id);
-      const { data } = await query;
-      if (data) products = data as Product[];
-    } catch {
-      /* keep mocks */
-    }
-  } else if (searchParams.category) {
-    products = MOCK_PRODUCTS.filter(
-      (p) => p.categories?.slug === searchParams.category,
-    );
+    const cat = categories.find((c) => c.slug === searchParams.category);
+    let query = supabase
+      .from("products")
+      .select("*, suppliers(id,name), categories(id,name,slug), product_options(*)")
+      .eq("is_draft", false)
+      .eq("is_active", true)
+      .order("created_at", { ascending: false });
+    if (cat) query = query.eq("category_id", cat.id);
+    const { data } = await query;
+    products = (data ?? []) as Product[];
+  } else {
+    categories = MOCK_CATEGORIES;
+    products = searchParams.category
+      ? MOCK_PRODUCTS.filter((p) => p.categories?.slug === searchParams.category)
+      : MOCK_PRODUCTS;
   }
 
   const cat = categories.find((c) => c.slug === searchParams.category);
