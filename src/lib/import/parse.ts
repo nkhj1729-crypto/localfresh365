@@ -24,7 +24,7 @@ export interface ExcelImage {
  * 산지이음 엑셀(.xlsx) 한 파일을 파싱해서 행 + 임베드 이미지를 추출한다.
  */
 export async function parseSanjiieumXlsx(buf: ArrayBuffer | Buffer): Promise<ExcelRow[]> {
-  const u8 = buf instanceof Buffer ? buf : Buffer.from(buf);
+  const u8: Buffer = buf instanceof Buffer ? buf : Buffer.from(new Uint8Array(buf));
 
   // 1) 행 데이터 파싱
   const wb = XLSX.read(u8, { type: "buffer" });
