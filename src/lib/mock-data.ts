@@ -1,0 +1,260 @@
+import type {
+  Category,
+  Order,
+  OrderItem,
+  Product,
+  ProductOption,
+  Supplier,
+} from "@/lib/supabase/types";
+
+export function isSupabaseConfigured() {
+  return Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  );
+}
+
+export const MOCK_CATEGORIES: Category[] = [
+  { id: "c1", slug: "vegetable", name: "채소", sort: 10 },
+  { id: "c2", slug: "fruit", name: "과일", sort: 20 },
+  { id: "c3", slug: "seafood", name: "수산물", sort: 30 },
+  { id: "c4", slug: "grain", name: "곡물", sort: 40 },
+];
+
+const SUP = {
+  haenam: { id: "s1", name: "산지 출고" },
+  wando: { id: "s2", name: "물류 출고" },
+  icheon: { id: "s3", name: "오렌지씨 물류" },
+};
+
+export const MOCK_SUPPLIERS: Supplier[] = [
+  { id: SUP.haenam.id, name: SUP.haenam.name, contact: null, phone: null, memo: null },
+  { id: SUP.wando.id, name: SUP.wando.name, contact: null, phone: null, memo: null },
+  { id: SUP.icheon.id, name: SUP.icheon.name, contact: null, phone: null, memo: null },
+];
+
+function mkOption(
+  productId: string,
+  externalId: string,
+  name: string,
+  costPrice: number,
+): ProductOption {
+  return {
+    id: `${productId}-${externalId}`,
+    product_id: productId,
+    external_id: externalId,
+    name,
+    cost_price: costPrice,
+    price: Math.round(costPrice * 1.5),
+    carrier: "CJ대한통운",
+    shipping_note: "무료 / 제주도 +4,000원 / 도서산간 +6,000원",
+    cutoff_time: "08:30",
+    is_taxable: false,
+    is_active: true,
+  };
+}
+
+export const MOCK_PRODUCTS: Product[] = [
+  {
+    id: "p1",
+    supplier_id: SUP.haenam.id,
+    category_id: "c1",
+    name: "고춧가루 600g",
+    slug: "gochugaru-600g",
+    origin: "국내산/중국산",
+    origin_detail: "국산은 영양·청양산, 중국산은 산둥성 직수입.",
+    shipping_info: "일반택배 (CJ대한통운) / 평일 14시 이전 주문 시 당일 발송",
+    description: "고운/굵은, 매움/안매움, 산지(국산/중국산)별로 옵션을 선택하세요.",
+    thumbnail_url: "https://picsum.photos/seed/gochugaru/800/600",
+    images: [],
+    external_group_key: "gochugaru-600g",
+    is_draft: false,
+    is_active: true,
+    suppliers: SUP.haenam,
+    categories: { id: "c1", name: "채소", slug: "vegetable" },
+    product_options: [
+      mkOption("p1", "108817", "중국산 고운 고춧가루(매움) 600g", 12950),
+      mkOption("p1", "108818", "중국산 굵은 고춧가루(매움) 600g", 12950),
+      mkOption("p1", "108819", "중국산 고운 고춧가루(안매움) 600g", 12100),
+      mkOption("p1", "108820", "중국산 굵은 고춧가루(안매움) 600g", 12100),
+      mkOption("p1", "108821", "국산 고운 고춧가루(매움) 600g", 26590),
+      mkOption("p1", "108822", "국산 굵은 고춧가루(매움) 600g", 26590),
+      mkOption("p1", "108823", "국산 고운 고춧가루(안매움) 600g", 21900),
+      mkOption("p1", "108824", "국산 굵은 고춧가루(안매움) 600g", 21900),
+    ],
+  },
+  {
+    id: "p2",
+    supplier_id: SUP.haenam.id,
+    category_id: "c1",
+    name: "국내산 완숙 찰토마토",
+    slug: "tomato-chal",
+    origin: "국내산",
+    origin_detail: null,
+    shipping_info: "일반택배 (롯데택배) / 평일 09:30 이전 주문 시 당일 발송",
+    description: null,
+    thumbnail_url: "https://picsum.photos/seed/tomato/800/600",
+    images: [],
+    external_group_key: "tomato-chal",
+    is_draft: false,
+    is_active: true,
+    suppliers: SUP.wando,
+    categories: { id: "c1", name: "채소", slug: "vegetable" },
+    product_options: [
+      mkOption("p2", "102555", "국내산 완숙 찰토마토 2kg", 7930),
+      mkOption("p2", "100961", "국내산 완숙 찰토마토 5kg", 14540),
+    ],
+  },
+  {
+    id: "p3",
+    supplier_id: SUP.haenam.id,
+    category_id: "c1",
+    name: "보쌈김치 (고춧가루/중국산)",
+    slug: "bossam-kimchi",
+    origin: "국내산",
+    origin_detail: null,
+    shipping_info: "일반택배 (CJ대한통운) / 평일 08:30 이전 주문 시 당일 발송",
+    description: null,
+    thumbnail_url: "https://picsum.photos/seed/kimchi/800/600",
+    images: [],
+    external_group_key: "bossam-kimchi",
+    is_draft: false,
+    is_active: true,
+    suppliers: SUP.haenam,
+    categories: { id: "c1", name: "채소", slug: "vegetable" },
+    product_options: [
+      mkOption("p3", "104044", "보쌈김치 2kg (고춧가루/중국산)", 15300),
+      mkOption("p3", "104045", "보쌈김치 3kg (고춧가루/중국산)", 20300),
+      mkOption("p3", "104046", "보쌈김치 5kg (고춧가루/중국산)", 28500),
+      mkOption("p3", "104047", "보쌈김치 10kg (고춧가루/중국산)", 51000),
+    ],
+  },
+  {
+    id: "p4",
+    supplier_id: SUP.icheon.id,
+    category_id: "c2",
+    name: "꿀당도 초당 옥수수",
+    slug: "corn-special",
+    origin: "국내산",
+    origin_detail: null,
+    shipping_info: "일반택배 (CJ대한통운) / 평일 08:30 이전 주문 시 당일 발송",
+    description: null,
+    thumbnail_url: "https://picsum.photos/seed/corn/800/600",
+    images: [],
+    external_group_key: "corn-special",
+    is_draft: false,
+    is_active: true,
+    suppliers: SUP.icheon,
+    categories: { id: "c2", name: "과일", slug: "fruit" },
+    product_options: [
+      mkOption("p4", "106913", "꿀당도 초당 옥수수 특대 18cm이상 15개", 37800),
+    ],
+  },
+];
+
+function mkOrderItem(
+  product: Product,
+  option: ProductOption,
+  qty: number,
+  orderId: string,
+): OrderItem {
+  return {
+    id: `${orderId}-${option.id}`,
+    order_id: orderId,
+    product_id: product.id,
+    option_id: option.id,
+    supplier_id: product.supplier_id,
+    product_name: product.name,
+    option_name: option.name,
+    origin: product.origin,
+    unit_price: option.price,
+    quantity: qty,
+    subtotal: option.price * qty,
+    suppliers: product.suppliers ?? null,
+  };
+}
+
+export const MOCK_ORDERS: Order[] = [
+  {
+    id: "o1",
+    order_no: "240507-1001",
+    customer_name: "이정환",
+    customer_phone: "010-9999-1111",
+    customer_email: "lee@example.com",
+    shipping_address: "서울시 강남구 테헤란로 123, 7층",
+    shipping_zipcode: "06141",
+    shipping_memo: "부재 시 경비실에 맡겨주세요.",
+    total_amount: 64485,
+    status: "pending",
+    tracking_carrier: null,
+    tracking_number: null,
+    admin_memo: null,
+    created_at: "2026-05-07T08:30:00.000Z",
+    updated_at: "2026-05-07T08:30:00.000Z",
+    order_items: [
+      mkOrderItem(MOCK_PRODUCTS[0], MOCK_PRODUCTS[0].product_options![4], 1, "o1"),
+      mkOrderItem(MOCK_PRODUCTS[1], MOCK_PRODUCTS[1].product_options![0], 2, "o1"),
+    ],
+  },
+  {
+    id: "o2",
+    order_no: "240507-1002",
+    customer_name: "박서연",
+    customer_phone: "010-8888-2222",
+    customer_email: null,
+    shipping_address: "경기도 성남시 분당구 판교역로 235",
+    shipping_zipcode: "13494",
+    shipping_memo: null,
+    total_amount: 22950,
+    status: "confirmed",
+    tracking_carrier: null,
+    tracking_number: null,
+    admin_memo: "단골 고객",
+    created_at: "2026-05-07T07:15:00.000Z",
+    updated_at: "2026-05-07T07:15:00.000Z",
+    order_items: [
+      mkOrderItem(MOCK_PRODUCTS[0], MOCK_PRODUCTS[0].product_options![0], 1, "o2"),
+    ],
+  },
+  {
+    id: "o3",
+    order_no: "240506-1015",
+    customer_name: "최민준",
+    customer_phone: "010-7777-3333",
+    customer_email: null,
+    shipping_address: "부산시 해운대구 마린시티1로 33",
+    shipping_zipcode: "48120",
+    shipping_memo: null,
+    total_amount: 76500,
+    status: "ordered",
+    tracking_carrier: null,
+    tracking_number: null,
+    admin_memo: null,
+    created_at: "2026-05-06T15:42:00.000Z",
+    updated_at: "2026-05-06T16:10:00.000Z",
+    order_items: [
+      mkOrderItem(MOCK_PRODUCTS[2], MOCK_PRODUCTS[2].product_options![1], 1, "o3"),
+      mkOrderItem(MOCK_PRODUCTS[2], MOCK_PRODUCTS[2].product_options![2], 1, "o3"),
+    ],
+  },
+  {
+    id: "o4",
+    order_no: "240505-0987",
+    customer_name: "한지우",
+    customer_phone: "010-6666-4444",
+    customer_email: "han@example.com",
+    shipping_address: "대전시 유성구 대학로 99",
+    shipping_zipcode: "34141",
+    shipping_memo: "오전 배송 희망",
+    total_amount: 56700,
+    status: "shipped",
+    tracking_carrier: "CJ대한통운",
+    tracking_number: "456712345678",
+    admin_memo: null,
+    created_at: "2026-05-05T11:20:00.000Z",
+    updated_at: "2026-05-06T09:00:00.000Z",
+    order_items: [
+      mkOrderItem(MOCK_PRODUCTS[3], MOCK_PRODUCTS[3].product_options![0], 1, "o4"),
+    ],
+  },
+];

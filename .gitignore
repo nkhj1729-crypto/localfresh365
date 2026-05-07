@@ -1,0 +1,22 @@
+node_modules
+.next
+out
+.env
+.env.local
+.env.*.local
+.DS_Store
+*.tsbuildinfo
+next-env.d.ts
+
+# 산지이음 도매 데이터(원본 엑셀) — 비공개
+samples/
+
+# 사용자 업로드 파일(런타임 데이터)
+public/uploads/
+
+# IDE
+.vscode/
+.idea/
+
+# Claude Code 사용자별 설정
+.claude/settings.local.json
