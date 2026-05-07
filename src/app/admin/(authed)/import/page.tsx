@@ -30,12 +30,12 @@ interface PreviewProduct {
 }
 
 interface PreviewResult {
-  token: string;
   summary: {
     total_rows: number;
     total_products: number;
     total_options: number;
     multi_option_groups: number;
+    images_uploaded: number;
   };
   products: PreviewProduct[];
 }
@@ -80,16 +80,13 @@ export default function AdminImportPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          token: result.token,
           products: result.products.map((p) => ({
             group_key: p.group_key,
             name: p.name,
             slug: p.slug,
             origin: p.origin,
             supplier: p.supplier,
-            thumbnail_filename: p.thumbnail_url
-              ? p.thumbnail_url.split("/").pop()
-              : null,
+            thumbnail_url: p.thumbnail_url,
             options: p.options.map((o) => ({
               external_id: o.external_id,
               name: o.name,

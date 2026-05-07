@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server";
-import { rename, mkdir, readdir } from "node:fs/promises";
-import path from "node:path";
 import { isAdmin } from "@/lib/admin";
 import { createServiceClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/mock-data";
@@ -24,12 +22,11 @@ interface CommitProduct {
   slug: string;
   origin: string | null;
   supplier: string | null;
-  thumbnail_filename: string | null;
+  thumbnail_url: string | null;
   options: CommitOption[];
 }
 
 interface CommitBody {
-  token: string;
   products: CommitProduct[];
 }
 
@@ -37,13 +34,9 @@ export async function POST(req: Request) {
   if (!isAdmin()) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-
   if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return NextResponse.json(
-      {
-        error:
-          "Supabase 가 연결되어 있지 않아 임포트를 저장할 수 없습니다. .env.local 에 NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY 를 설정한 뒤 다시 시도해주세요.",
-      },
+      { error: "Supabase 가 연결되지 않았습니다." },
       { status: 503 },
     );
   }
@@ -54,9 +47,8 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "잘못된 요청" }, { status: 400 });
   }
-
-  if (!body.token || !Array.isArray(body.products)) {
-    return NextResponse.json({ error: "필수 필드 누락" }, { status: 400 });
+  if (!Array.isArray(body.products)) {
+    return NextResponse.json({ error: "products 누락" }, { status: 400 });
   }
 
   const supabase = createServiceClient();
@@ -85,10 +77,10 @@ export async function POST(req: Request) {
     }
   }
 
-  // 2) 임포트 전 모든 활성 옵션 external_id 조회 — 이번 엑셀에 없는 건 비활성화
+  // 2) 임포트 전 모든 옵션 external_id 조회 — 이번 엑셀에 없는 건 비활성화
   const { data: priorOpts } = await supabase
     .from("product_options")
-    .select("id, external_id");
+    .select("external_id");
   const priorIds = new Set(
     (priorOpts ?? []).map((o) => o.external_id).filter(Boolean) as string[],
   );
@@ -101,11 +93,12 @@ export async function POST(req: Request) {
   let created = 0;
   let updated = 0;
 
-  // 3) 그룹 단위로 product / options upsert
   for (const p of body.products) {
-    const supplier_id = p.supplier ? supplierIdByName.get(p.supplier) ?? null : null;
+    const supplier_id = p.supplier
+      ? supplierIdByName.get(p.supplier) ?? null
+      : null;
 
-    // 같은 group_key 또는 옵션 external_id 일치하는 기존 product 찾기
+    // 기존 product 식별 — group_key 또는 옵션 external_id 일치
     let existingProductId: string | null = null;
     {
       const { data } = await supabase
@@ -115,8 +108,7 @@ export async function POST(req: Request) {
         .maybeSingle();
       if (data) existingProductId = data.id;
     }
-    if (!existingProductId) {
-      // 옵션의 external_id 로도 시도
+    if (!existingProductId && p.options.length > 0) {
       const ext = p.options.map((o) => o.external_id);
       const { data } = await supabase
         .from("product_options")
@@ -129,18 +121,26 @@ export async function POST(req: Request) {
 
     let productId: string;
     if (existingProductId) {
-      // 기존 상품 — 가격/옵션만 갱신, 관리자 수동 작성 필드(description, origin_detail, images, is_draft 의 명시적 publish 상태)는 보존
+      // 가격·공급사·동기화시간만 갱신, 관리자 수동 작성 필드는 보존.
+      // 단, 썸네일이 비어있을 때만 자동 채워줌.
+      const { data: prev } = await supabase
+        .from("products")
+        .select("thumbnail_url")
+        .eq("id", existingProductId)
+        .single();
+
+      const update: Record<string, unknown> = {
+        supplier_id,
+        name: p.name,
+        external_group_key: p.group_key,
+        external_synced_at: now,
+      };
+      if (!prev?.thumbnail_url && p.thumbnail_url) {
+        update.thumbnail_url = p.thumbnail_url;
+      }
       const { error } = await supabase
         .from("products")
-        .update({
-          supplier_id,
-          name: p.name,
-          external_group_key: p.group_key,
-          external_synced_at: now,
-          // origin 은 비어있을 때만 자동값 채워주기
-          ...(p.origin ? {} : {}),
-          // thumbnail_url 은 처음 채워졌을 때만 갱신
-        })
+        .update(update)
         .eq("id", existingProductId);
       if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -155,6 +155,7 @@ export async function POST(req: Request) {
           name: p.name,
           slug: await uniqueSlug(supabase, p.slug),
           origin: p.origin,
+          thumbnail_url: p.thumbnail_url,
           external_group_key: p.group_key,
           external_synced_at: now,
           is_draft: true,
@@ -209,43 +210,9 @@ export async function POST(req: Request) {
         });
       }
     }
-
-    // 썸네일 처리 — preview 폴더에서 영구 폴더로 이동 (Supabase 연결 시 추후 Storage 로 마이그레이션)
-    if (p.thumbnail_filename) {
-      try {
-        const fromDir = path.join(
-          process.cwd(),
-          "public",
-          "uploads",
-          "preview",
-          body.token,
-        );
-        const toDir = path.join(process.cwd(), "public", "uploads", "products", productId);
-        await mkdir(toDir, { recursive: true });
-        const fromPath = path.join(fromDir, p.thumbnail_filename);
-        const toPath = path.join(toDir, p.thumbnail_filename);
-        await rename(fromPath, toPath).catch(async () => {
-          // 이미 옮겨졌거나 없으면 폴더 내 첫 파일 사용
-          const files = await readdir(fromDir).catch(() => []);
-          if (files.length > 0) {
-            await rename(
-              path.join(fromDir, files[0]),
-              path.join(toDir, files[0]),
-            );
-          }
-        });
-        const publicUrl = `/uploads/products/${productId}/${p.thumbnail_filename}`;
-        await supabase
-          .from("products")
-          .update({ thumbnail_url: publicUrl })
-          .eq("id", productId);
-      } catch (e) {
-        console.warn("썸네일 이동 실패:", e);
-      }
-    }
   }
 
-  // 4) 이번 엑셀에 없던 기존 옵션은 비활성화
+  // 3) 이번 엑셀에 없던 기존 옵션은 비활성화
   const obsolete = [...priorIds].filter((id) => !incomingIds.has(id));
   let deactivated = 0;
   if (obsolete.length > 0) {
