@@ -20,20 +20,20 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b bg-white/85 backdrop-blur">
-      <div className="container flex h-16 items-center justify-between">
-        <Link href="/" className="flex items-center gap-2" aria-label="LOCAL FRESH 365">
+      <div className="container flex h-24 items-center justify-between md:h-28">
+        <Link href="/" className="flex items-center" aria-label="LOCAL FRESH 365">
           {logoOk ? (
             <Image
               src="/logo.png"
               alt="LOCAL FRESH 365"
-              width={120}
-              height={40}
+              width={256}
+              height={256}
               priority
-              className="h-9 w-auto"
+              className="h-20 w-20 md:h-24 md:w-24 object-contain"
               onError={() => setLogoOk(false)}
             />
           ) : (
-            <span className="text-base font-bold tracking-wider text-emerald-900">
+            <span className="text-xl font-bold tracking-wider text-emerald-900">
               LOCAL FRESH 365
             </span>
           )}
