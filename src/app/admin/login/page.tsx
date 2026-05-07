@@ -50,7 +50,7 @@ function LoginForm() {
         <div>
           <h1 className="text-lg font-semibold">관리자 로그인</h1>
           <p className="mt-1 text-xs text-muted-foreground">
-            두울손 위탁판매 관리 시스템
+            LOCAL FRESH 365 위탁판매 관리 시스템
           </p>
         </div>
         <div>

@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "두울손 — 산지직송 농수산물",
+  title: "LOCAL FRESH 365 — 산지직송 농수산물",
   description:
-    "두울손은 산지 생산자와 소비자를 잇는 농수산물 위탁판매 플랫폼입니다.",
+    "LOCAL FRESH 365 는 산지 생산자와 소비자를 잇는 농수산물 위탁판매 플랫폼입니다.",
 };
 
 export default function RootLayout({

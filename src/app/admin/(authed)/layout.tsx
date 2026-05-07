@@ -10,8 +10,8 @@ export default function AdminAuthedLayout({
       <header className="border-b bg-white">
         <div className="container flex h-14 items-center justify-between">
           <div className="flex items-center gap-8">
-            <Link href="/admin" className="text-sm font-semibold">
-              두울손 관리자
+            <Link href="/admin" className="text-sm font-bold tracking-wider text-emerald-900">
+              LOCAL FRESH 365 <span className="text-muted-foreground font-normal">관리자</span>
             </Link>
             <nav className="flex gap-5 text-sm text-muted-foreground">
               <Link href="/admin/orders" className="hover:text-foreground">

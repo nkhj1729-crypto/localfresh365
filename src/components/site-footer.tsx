@@ -4,7 +4,9 @@ export function SiteFooter() {
       <div className="container py-12">
         <div className="grid gap-8 md:grid-cols-4">
           <div>
-            <p className="text-sm font-semibold">두울손 DUULSON</p>
+            <p className="text-sm font-bold tracking-wider text-emerald-900">
+              LOCAL FRESH 365
+            </p>
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
               산지 직거래 농수산물 위탁판매. <br />
               생산자와 소비자를 잇는 신뢰의 유통.
@@ -27,7 +29,7 @@ export function SiteFooter() {
           </div>
         </div>
         <div className="mt-10 border-t pt-6 text-xs text-muted-foreground">
-          © {new Date().getFullYear()} DUULSON. All rights reserved.
+          © {new Date().getFullYear()} LOCAL FRESH 365. All rights reserved.
         </div>
       </div>
     </footer>

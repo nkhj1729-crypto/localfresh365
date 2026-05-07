@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
+import { useState } from "react";
 import { ShoppingCart } from "lucide-react";
 import { useCart } from "@/store/cart";
 
@@ -14,13 +16,27 @@ const NAV = [
 
 export function SiteHeader() {
   const count = useCart((s) => s.items.reduce((a, b) => a + b.quantity, 0));
+  const [logoOk, setLogoOk] = useState(true);
 
   return (
     <header className="sticky top-0 z-40 border-b bg-white/85 backdrop-blur">
       <div className="container flex h-16 items-center justify-between">
-        <Link href="/" className="flex items-baseline gap-2">
-          <span className="text-xl font-semibold tracking-tight">두울손</span>
-          <span className="text-xs text-muted-foreground">DUULSON</span>
+        <Link href="/" className="flex items-center gap-2" aria-label="LOCAL FRESH 365">
+          {logoOk ? (
+            <Image
+              src="/logo.png"
+              alt="LOCAL FRESH 365"
+              width={120}
+              height={40}
+              priority
+              className="h-9 w-auto"
+              onError={() => setLogoOk(false)}
+            />
+          ) : (
+            <span className="text-base font-bold tracking-wider text-emerald-900">
+              LOCAL FRESH 365
+            </span>
+          )}
         </Link>
 
         <nav className="hidden gap-6 md:flex">

@@ -38,9 +38,9 @@ export default async function HomePage() {
               가장 가까운 식탁으로.
             </h1>
             <p className="mt-5 max-w-md text-sm leading-relaxed text-muted-foreground md:text-base">
-              두울손은 검증된 산지 생산자와 직접 계약하여 신선한 농수산물을
-              소비자에게 전달합니다. 계절의 가장 좋은 것을 가장 정직한
-              가격으로.
+              LOCAL FRESH 365 는 검증된 산지 생산자와 직접 계약하여 신선한
+              농수산물을 소비자에게 전달합니다. 계절의 가장 좋은 것을 가장
+              정직한 가격으로.
             </p>
             <div className="mt-8 flex gap-3">
               <Button asChild size="lg">
