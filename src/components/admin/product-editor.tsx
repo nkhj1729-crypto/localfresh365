@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Eye, EyeOff, ImageIcon, Save } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, ImageIcon, RotateCcw, Save } from "lucide-react";
 import type { Product } from "@/lib/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +18,8 @@ interface Props {
   product: Product;
 }
 
+const DEFAULT_MARKUP = 1.3;
+
 export function ProductEditor({ product }: Props) {
   const router = useRouter();
   const [form, setForm] = useState({
@@ -27,27 +29,67 @@ export function ProductEditor({ product }: Props) {
     description: product.description ?? "",
     shipping_info: product.shipping_info,
   });
-  const [saving, setSaving] = useState(false);
-  const [statusMsg, setStatusMsg] = useState<string | null>(null);
 
   const opts = product.product_options ?? [];
   const active = opts.filter((o) => o.is_active);
-  const prices = active.map((o) => o.price);
-  const min = prices.length ? Math.min(...prices) : 0;
-  const max = prices.length ? Math.max(...prices) : 0;
+
+  // 옵션별 매장가 편집 상태 (option.id → string 입력값)
+  const [optionPrices, setOptionPrices] = useState<Record<string, string>>(() =>
+    Object.fromEntries(opts.map((o) => [o.id, String(o.price)])),
+  );
+
+  const [saving, setSaving] = useState(false);
+  const [statusMsg, setStatusMsg] = useState<string | null>(null);
+
+  const computedPrices = active
+    .map((o) => parseInt(optionPrices[o.id] ?? "0", 10) || 0)
+    .filter((p) => p > 0);
+  const min = computedPrices.length ? Math.min(...computedPrices) : 0;
+  const max = computedPrices.length ? Math.max(...computedPrices) : 0;
+
+  function resetToDefault(o: { id: string; cost_price: number }) {
+    setOptionPrices((prev) => ({
+      ...prev,
+      [o.id]: String(Math.round(o.cost_price * DEFAULT_MARKUP)),
+    }));
+  }
+
+  function resetAllToDefault() {
+    setOptionPrices(
+      Object.fromEntries(
+        opts.map((o) => [o.id, String(Math.round(o.cost_price * DEFAULT_MARKUP))]),
+      ),
+    );
+  }
 
   async function save(action?: "publish" | "unpublish") {
     setSaving(true);
     setStatusMsg(null);
     try {
+      // 옵션 가격 변경분만 추려서 함께 전송
+      const option_prices = opts
+        .map((o) => {
+          const v = parseInt(optionPrices[o.id] ?? "", 10);
+          if (!Number.isFinite(v) || v < 0) return null;
+          if (v === o.price) return null;
+          return { id: o.id, price: v };
+        })
+        .filter(Boolean) as { id: string; price: number }[];
+
       const res = await fetch(`/api/admin/products/${product.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, action }),
+        body: JSON.stringify({ ...form, action, option_prices }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "저장 실패");
-      setStatusMsg(action === "publish" ? "공개되었습니다." : action === "unpublish" ? "비공개로 전환했습니다." : "저장되었습니다.");
+      setStatusMsg(
+        action === "publish"
+          ? "공개되었습니다."
+          : action === "unpublish"
+            ? "비공개로 전환했습니다."
+            : `저장되었습니다.${option_prices.length ? ` (가격 ${option_prices.length}개 변경)` : ""}`,
+      );
       router.refresh();
     } catch (e) {
       setStatusMsg(e instanceof Error ? e.message : "오류");
@@ -119,7 +161,7 @@ export function ProductEditor({ product }: Props) {
           </p>
           <div className="rounded-md border p-3 text-xs text-muted-foreground">
             <div>옵션 {active.length}개 활성</div>
-            {prices.length > 0 && (
+            {computedPrices.length > 0 && (
               <div className="mt-1 font-semibold text-foreground">
                 {min === max ? formatKRW(min) : `${formatKRW(min)} ~ ${formatKRW(max)}`}
               </div>
@@ -185,10 +227,19 @@ export function ProductEditor({ product }: Props) {
             </CardContent>
           </Card>
 
-          {/* Options table (read-only) */}
+          {/* Options — 매장가는 직접 수정 가능 */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">옵션(규격)</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-base">옵션(규격) · 매장가</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={resetAllToDefault}
+                type="button"
+              >
+                <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                전체 ×{DEFAULT_MARKUP} 로 초기화
+              </Button>
             </CardHeader>
             <CardContent>
               <table className="w-full text-xs">
@@ -198,33 +249,74 @@ export function ProductEditor({ product }: Props) {
                     <th className="pb-2 text-left font-medium">옵션명</th>
                     <th className="pb-2 text-right font-medium">공급가</th>
                     <th className="pb-2 text-right font-medium">매장가</th>
+                    <th className="pb-2 text-right font-medium">배수</th>
                     <th className="pb-2 text-center font-medium">활성</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {opts.map((o) => (
-                    <tr key={o.id} className="border-b last:border-0">
-                      <td className="py-2 font-mono">{o.external_id}</td>
-                      <td className="py-2">{o.name}</td>
-                      <td className="py-2 text-right tabular-nums">
-                        {o.cost_price.toLocaleString()}
-                      </td>
-                      <td className="py-2 text-right font-semibold tabular-nums">
-                        {o.price.toLocaleString()}
-                      </td>
-                      <td className="py-2 text-center">
-                        {o.is_active ? (
-                          <Badge variant="success">활성</Badge>
-                        ) : (
-                          <Badge variant="muted">품절</Badge>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                  {opts.map((o) => {
+                    const inputVal = optionPrices[o.id] ?? String(o.price);
+                    const numeric = parseInt(inputVal || "0", 10) || 0;
+                    const ratio = o.cost_price > 0 ? numeric / o.cost_price : 0;
+                    const changed = numeric !== o.price;
+                    return (
+                      <tr key={o.id} className="border-b last:border-0">
+                        <td className="py-2 font-mono">{o.external_id}</td>
+                        <td className="py-2">{o.name}</td>
+                        <td className="py-2 text-right tabular-nums text-muted-foreground">
+                          {o.cost_price.toLocaleString()}
+                        </td>
+                        <td className="py-2 pl-2">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Input
+                              type="number"
+                              inputMode="numeric"
+                              min={0}
+                              value={inputVal}
+                              onChange={(e) =>
+                                setOptionPrices((prev) => ({
+                                  ...prev,
+                                  [o.id]: e.target.value,
+                                }))
+                              }
+                              className={
+                                "h-8 w-24 text-right tabular-nums " +
+                                (changed
+                                  ? "border-amber-400 bg-amber-50/60"
+                                  : "")
+                              }
+                              disabled={!o.is_active}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => resetToDefault(o)}
+                              className="text-muted-foreground hover:text-foreground disabled:opacity-30"
+                              aria-label="기본값으로"
+                              disabled={!o.is_active}
+                            >
+                              <RotateCcw className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="py-2 text-right tabular-nums text-muted-foreground">
+                          ×{ratio.toFixed(2)}
+                        </td>
+                        <td className="py-2 text-center">
+                          {o.is_active ? (
+                            <Badge variant="success">활성</Badge>
+                          ) : (
+                            <Badge variant="muted">품절</Badge>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
               <p className="mt-3 text-xs text-muted-foreground">
-                * 옵션·가격은 엑셀 임포트로만 갱신됩니다. 매장가는 공급가 × 1.5.
+                * 옵션 목록·공급가는 엑셀 임포트로만 갱신됩니다. 매장가는
+                기본값으로 공급가 × {DEFAULT_MARKUP} 가 들어가며, 직접 수정 후
+                저장하시면 적용됩니다. (재임포트 시 다시 기본값으로 되돌아갑니다)
               </p>
             </CardContent>
           </Card>

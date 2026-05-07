@@ -3,6 +3,11 @@ import { isAdmin } from "@/lib/admin";
 import { createServiceClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/mock-data";
 
+interface OptionPriceUpdate {
+  id: string;
+  price: number;
+}
+
 interface PatchBody {
   name?: string;
   origin?: string;
@@ -10,6 +15,7 @@ interface PatchBody {
   description?: string;
   shipping_info?: string;
   action?: "publish" | "unpublish";
+  option_prices?: OptionPriceUpdate[];
 }
 
 export async function PATCH(
@@ -45,13 +51,32 @@ export async function PATCH(
   }
 
   const supabase = createServiceClient();
+
+  // 1) 상품 자체 업데이트
   const { data, error } = await supabase
     .from("products")
     .update(update)
     .eq("id", params.id)
     .select()
     .single();
-
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // 2) 옵션별 매장가 업데이트 (있을 때만)
+  if (Array.isArray(body.option_prices) && body.option_prices.length > 0) {
+    for (const op of body.option_prices) {
+      if (typeof op.price !== "number" || op.price < 0) continue;
+      const { error: e } = await supabase
+        .from("product_options")
+        .update({ price: op.price })
+        .eq("id", op.id)
+        .eq("product_id", params.id); // 같은 상품 옵션만
+      if (e)
+        return NextResponse.json(
+          { error: `옵션 가격 저장 실패: ${e.message}` },
+          { status: 500 },
+        );
+    }
+  }
+
   return NextResponse.json(data);
 }

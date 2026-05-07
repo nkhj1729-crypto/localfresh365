@@ -33,7 +33,7 @@ export interface ImportPreview {
   products: ImportPreviewProduct[];
 }
 
-const MARKUP = 1.5;
+const MARKUP = 1.3;
 
 export function buildPreview(rows: ExcelRow[]): ImportPreview {
   const groups = clusterRows(rows);

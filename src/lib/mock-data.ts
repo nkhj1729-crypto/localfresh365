@@ -45,7 +45,7 @@ function mkOption(
     external_id: externalId,
     name,
     cost_price: costPrice,
-    price: Math.round(costPrice * 1.5),
+    price: Math.round(costPrice * 1.3),
     carrier: "CJ대한통운",
     shipping_note: "무료 / 제주도 +4,000원 / 도서산간 +6,000원",
     cutoff_time: "08:30",
