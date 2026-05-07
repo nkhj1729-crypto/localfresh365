@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatKRW } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 
 interface PreviewOption {
   external_id: string;
@@ -55,14 +56,34 @@ export default function AdminImportPage() {
     setErr(null);
     setResult(null);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/admin/import/preview", {
+      // 1) 서버에서 signed upload URL 발급
+      const signRes = await fetch("/api/admin/import/sign-upload", {
         method: "POST",
-        body: fd,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "업로드 실패");
+      if (!signRes.ok) {
+        const j = await signRes.json().catch(() => ({}));
+        throw new Error(j.error ?? "업로드 URL 발급 실패");
+      }
+      const { path, token } = (await signRes.json()) as {
+        path: string;
+        token: string;
+      };
+
+      // 2) Supabase Storage 에 직접 업로드 (Vercel 함수 본문 한도 우회)
+      const supabase = createClient();
+      const { error: upErr } = await supabase.storage
+        .from("imports")
+        .uploadToSignedUrl(path, token, file);
+      if (upErr) throw new Error(`업로드 실패: ${upErr.message}`);
+
+      // 3) 서버에 path 만 전달해 미리보기 트리거
+      const previewRes = await fetch("/api/admin/import/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path }),
+      });
+      const data = await previewRes.json();
+      if (!previewRes.ok) throw new Error(data.error || "미리보기 실패");
       setResult(data);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "오류");
